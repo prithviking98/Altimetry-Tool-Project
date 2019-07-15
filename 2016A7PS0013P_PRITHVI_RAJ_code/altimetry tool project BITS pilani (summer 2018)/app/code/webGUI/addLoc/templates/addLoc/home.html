@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Add Location</title>
+	<!--linking css sheets for icons-->
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+	{%load static%}	
+	<link rel="stylesheet" type="text/css" href="{%static 'addLoc/home_style.css'%}">
+	<meta charset="utf-8" />
+
+	<!-- Reference to the Bing Maps SDK -->
+	<script type='text/javascript'
+			src='http://www.bing.com/api/maps/mapcontrol?callback=GetMap' 
+			async defer>		
+	</script>
+	<script type="text/javascript">
+		var map,j3layer,j2layer,infobox;
+		function GetMap()
+		{
+			map = new Microsoft.Maps.Map('#myMap',
+			{
+				credentials: 'ApTZZbhhoZxzjkplHUrYvndCUp6CpJktn2XyegtbkSDlElabO4GM7forPxAUNuZy',
+				center: new Microsoft.Maps.Location(23.5, 82.5),
+				mapTypeId: Microsoft.Maps.MapTypeId.aerial,
+				zoom: 5.0
+			});
+		document.getElementById("new_form").style.display="none";
+
+			//adding mouse click and map type change event handlers
+			Microsoft.Maps.Events.addHandler(map, 'click', mouseclickHandle );
+			Microsoft.Maps.Events.addHandler(map, 'maptypechanged', mapTypeChangeHandle);
+			//Load the GeoXml module.
+			Microsoft.Maps.loadModule('Microsoft.Maps.GeoXml', function () 
+			{
+				//Create an instance of the GeoXmlLayer.
+				j3layer = new Microsoft.Maps.GeoXmlLayer();
+				j2layer = new Microsoft.Maps.GeoXmlLayer();
+				//Set the URL of the geo XML file as the data source of the layer.
+				j3layer.setDataSource('http://127.0.0.1:8000/media/kmz/Jason3_track_uJXECAS.kmz', true);
+				j2layer.setDataSource('http://127.0.0.1:8000/media/kmz/Jason2_track.kmz', true);
+				//setting visibility false initially
+				j2layer.setVisible(false)
+				j3layer.setVisible(false)
+				//adding click event handle
+				Microsoft.Maps.Events.addHandler(j3layer,'click',mouseclickHandle);
+				Microsoft.Maps.Events.addHandler(j2layer,'click',mouseclickHandle);
+				//Add the layer to the map.
+				map.layers.insert(j3layer);
+				map.layers.insert(j2layer);
+			});
+
+			{% for loc in added_locs%}
+				// console.log({{loc.latitude}},{{loc.longitude}},'{{loc.satellite.nameShort}}');
+				placePushPin({{loc.latitude}},{{loc.longitude}},'{{loc.name}}','{{loc.waterBodyType.name}}',
+					'{{loc.basin.name}}','{{loc.satellite.nameLong}}','{{loc.state.name}}','{{loc.country.name}}');
+			{% endfor %}	
+
+			//Create an infobox at the center of the map but don't show it.
+        	infobox = new Microsoft.Maps.Infobox(map.getCenter(), {
+            	visible: false
+        	});
+        	//adding event handler to get location of hover point if clicked
+        	Microsoft.Maps.Events.addHandler(infobox,'click',mouseclickHandle);
+
+        	//Assign the infobox to a map instance.
+       		infobox.setMap(map);
+
+			recentre();
+		}
+
+		function mapTypeChangeHandle()
+		{
+			var aerial=Microsoft.Maps.MapTypeId.aerial;
+			var road=Microsoft.Maps.MapTypeId.road;
+			var mapType=map.getMapTypeId();
+			var x=document.getElementsByClassName('right_button');
+			var y=document.getElementsByClassName('dropdown-content');
+			if(mapType==road)
+			{
+				for(var i=0;i<x.length;++i)
+				{
+					x[i].style.backgroundColor='#ffffff';
+					x[i].style.color='#333333';
+					x[i].style.boxShadow= '0px 0px 0px 2.5px rgba(255,255,255,0.45)'
+
+				}
+				for(var i=0;i<y.length;++i)
+				{
+					y[i].style.backgroundColor='rgba(255,255,255,0.7)';
+					y[i].style.color='#333333';
+				}
+			}
+			else 
+			{
+				for(var i=0;i<x.length;++i)
+				{
+					x[i].style.backgroundColor='#444';
+					x[i].style.color='#ffffff';
+					x[i].style.boxShadow= '0px 0px 0px 2.5px rgba(0,0,0,0.45)'
+				}
+				for(var i=0;i<y.length;++i)
+				{
+					y[i].style.backgroundColor='#000000';
+					y[i].style.color='#ffffff';
+				}
+			}
+		}
+
+			
+		function mouseclickHandle(e)
+		{
+			var loc;
+			if(e.targetType=='pushpin')
+				loc=e.target.getLocation();
+			else
+				loc=e.location;
+			document.getElementById('lat_value').value=loc.latitude;
+			document.getElementById('lon_value').value=loc.longitude;
+			document.getElementById('lat_display').innerHTML=loc.latitude;
+			document.getElementById('lon_display').innerHTML=loc.longitude;
+			return false;
+		}
+
+		function showInfoBox(e)
+		{
+			// console.log(e.target.metadata);
+			if(e.target.metadata)
+			{
+				var met=e.target.metadata;
+				infobox.setOptions({
+				location: e.target.getLocation(),
+				title: 'Name: '+met.name,
+				description: 'Type: '+met.waterBodyType+'<br>Basin: '+met.basin+'<br>Satellite: '+met.satname+'<br>Coordinates: '+met.coordinates+'<br>Place: '+met.place,
+				visible:true
+				})
+			}
+		}
+		function hideInfoBox()
+		{
+			infobox.setOptions({visible: false});
+		}
+		function placePushPin(lat,lon,name,waterBodyType,basin,satname,state,country)
+		{
+			var loc=new Microsoft.Maps.Location(lat,lon);
+			var pin ; 
+			pin=new Microsoft.Maps.Pushpin(loc);	
+			pin.metadata={
+				name: name,
+				waterBodyType: waterBodyType,
+				basin: basin,
+				satname: satname,
+				coordinates: lat+'N'+'<br>'+lon+'E',
+				place: state+', '+country,
+				color: 'purple'
+			}
+
+			if (satname=='Jason 3')		
+			{
+				// console.log(satname);
+				pin.setOptions({color: '#ff6600'});
+			}
+			else if(satname=='Jason 2')
+				pin.setOptions({color: '#00ff00'});
+
+			//add event handlers for info box on hover,location display on click
+			Microsoft.Maps.Events.addHandler(pin,'mouseover',showInfoBox);
+			Microsoft.Maps.Events.addHandler(pin,'mouseout',hideInfoBox);
+			Microsoft.Maps.Events.addHandler(pin,'click',mouseclickHandle);
+
+			//Add the pushpin to the map
+			map.entities.push(pin);
+		}
+
+		function panToPoint(lat,lon)
+		{
+			var loc=new Microsoft.Maps.Location(lat,lon);
+			// console.log(loc);
+			map.setView({
+			mapTypeId: Microsoft.Maps.MapTypeId.aerial,
+			center: loc,
+			zoom: 9
+			});        
+		}
+
+		function panToPointSet(lat,lon) //lat and lon are arrays of values
+		{
+			var loc=[];
+			for(var i=0;i<lat.length;++i)
+			{
+				console.log(i,lat[i],lon[i]);
+				loc.push(new Microsoft.Maps.Location(lat[i],lon[i]));
+			}
+			console.log(loc);
+			var rect=Microsoft.Maps.LocationRect.fromLocations(loc);
+			map.setView({bounds:rect,padding:80});
+		}
+
+		function recentre()
+		{
+			map.setView({
+			center: new Microsoft.Maps.Location(23.5, 82.5),
+			zoom: 5
+			});
+		}
+
+		function filter_list()
+		{
+			document.getElementById("myDropdown").classList.toggle("show");
+		}
+
+
+		document.addEventListener('DOMContentLoaded', function () 
+		{
+			var checkbox = document.querySelector('input[id = "jason2"]');
+
+			checkbox.addEventListener('change', function () 
+			{
+			    if (checkbox.checked) 
+			     	j2layer.setVisible(true);
+			    else
+			    	j2layer.setVisible(false);
+			});
+		});
+
+		document.addEventListener('DOMContentLoaded', function () 
+		{
+			var checkbox = document.querySelector('input[id = "jason3"]');
+			checkbox.addEventListener('change', function () 
+			{
+			   	if (checkbox.checked) 
+			      j3layer.setVisible(true);
+			    else
+			    	j3layer.setVisible(false);
+			});
+		});
+
+		function hoverChange(event)
+		{
+			if(map.getMapTypeId()==Microsoft.Maps.MapTypeId.aerial)
+				return;
+			event.target.style.backgroundColor='#ededed';
+		}
+		function hoverReverse(event)
+		{
+			if(map.getMapTypeId()==Microsoft.Maps.MapTypeId.aerial)
+				return;
+			event.target.style.backgroundColor='#ffffff';
+		}
+		function show_form() 
+		{
+			    document.getElementById("new_form").style.display="block";
+		}
+		function hide_form()
+		{
+			    document.getElementById("new_form").style.display="none";
+		}	
+		{% if messages %}
+			{%for message in messages%}
+				window.alert('{{message}}');
+			{%endfor%}
+		{% endif %}
+	</script> 
+</head>
+<body style="background-color:#444">
+	<!-- Side navigation -->
+	<div class="sidenav">
+		<a href="{%url 'addLoc:home'%}" >
+			{%load static%}
+			<img src='{%static "addLoc/isro.jpg"%}' style="margin-left:auto;margin-right:auto;width:100%;display:block;" title="ISRO home">	
+		</a>
+		<center>
+			<button class="side_button" style="vertical-align:middle; font-family: Arial;" onclick="show_form()">
+				<span><b>Add New Location</b></span>
+			</button>
+		</center><br>
+		<div style="margin-left: 3%"><!--lots of changes from here-->
+
+			<form id = "new_form" method='post' action='{% url 'addLoc:home' %}'>
+			{% csrf_token %}
+			<p style="color: red;font-size: 12px">* marked fields must be filled</p>		
+			<label class = "form_label">Latitude: <span style ="color:red;"><sup>*</sup></span></label>
+				<input name = "latitude" id="lat_value" type = "text" class = "text_box" autocomplete="off" required data-readonly><br><br>
+			<label class ="form_label">Longitude: <span style ="color:red;"><sup>*</sup></span></label>
+				<input name = "longitude" id="lon_value" type = "text"	autocomplete="off" class = "text_box" required data-readonly><br><br>
+			<label class ="form_label">Satellite name: <span style ="color:red;"><sup>*</sup></span></label>
+				<select  class = "text_box"	required name='satellite'>
+					<option value="">-- select --</option>
+					{% for sat in sats%}
+						<option value={{sat.id}}>{{sat.nameLong}}</option>
+					{% endfor %}
+				</select><br><br>
+			<label class ="form_label">Name of the water body: <span style ="color:red;"><sup>*</sup></span></label>
+				<input name = "name" type = "text" autocomplete="off" class = "text_box" maxlength="100" required><br><br>
+			<label class ="form_label">State/Province/UT: <span style ="color:red;"><sup>*</sup></span></label>
+				<select  class = "text_box" required name='state'>
+					<option value="">-- select --</option>
+					{% for state in states%}
+						<option value={{state.id}}>{{state.name}}</option>
+					{% endfor %}
+				</select><br><br>
+			<label class ="form_label">Country: <span style ="color:red;"><sup>*</sup></span></label>
+				<select class = "text_box" required name='country'>
+					{% for country in countries%}
+						<option value={{country.id}}>{{country.name}}</option>
+					{% endfor %}
+				</select><br><br>
+			<label class ="form_label">Type of waterbody: <span style ="color:red;"><sup>*</sup></span></label>
+				<select class = "text_box" required name='wbt'>
+					<option value="">-- select --</option>
+					{% for type in wbt%}
+						<option value={{type.id}}>{{type.name}}</option>
+					{% endfor %}
+				</select><br><br>
+			<label class ="form_label">Basin: </label><br>
+				<select class = "text_box" name='basin'>
+					<option value="">-- select --</option>
+					{% for basin in basins%}
+						<option value={{basin.id}}>{{basin.name}}</option>
+					{% endfor %}
+				</select><br><br>
+				<center>
+				<input type="submit" value="Save" class="side_button" style="vertical-align:middle; font-family: Arial;">
+				</input>
+				<input type="reset" value="Cancel" class="side_button" style="vertical-align:middle; font-family: Arial;" type='reset' onclick="hide_form()">
+				</input>
+				</center>
+			<br>
+			</form>
+
+		</div>
+	</div>
+	<div class='main'>
+		<div id="myMap" >
+		</div>
+		<div class="right_bar">
+			<span class="material-icons right_button" onclick="recentre()" title="Re-Centre (India)"onmouseover=
+			"hoverChange(event)" onmouseout="hoverReverse(event)">home</span>
+			<br><br><br>
+			<span class="fa fa-filter right_button" onclick="filter_list()" title="Satellite Track Filter" onmouseover=
+			"hoverChange(event)" onmouseout="hoverReverse(event)"></span>
+		</div>
+		<div id="myDropdown" class="dropdown-content w3-animate-zoom">
+			<label class="switch">
+  				<input type="checkbox" id="jason2">
+  					<span class="slider round"></span>
+			</label>
+			<label>
+   				<a>Jason 2</a>
+	   		</label>
+    		<br>		
+    		<label class="switch">
+  				<input type="checkbox" id="jason3">
+  					<span class="slider round"></span>
+    		</label>
+    		<label>
+    			<a>Jason 3</a>
+    		</label>
+			
+		</div>
+		<div class="legend">
+			<p>
+				<sub class="material-icons" style="color:purple;"> view_headline</sub>	<span style="color:white;font-size: 11px">Jason 2 track</span>
+			</p> 
+			<p>
+				<sub class="material-icons" style="color:red"> view_headline</sub>	<span style="color:white;font-size: 11px">Jason 3 track</span>
+			</p>
+			<p>
+				&nbsp<span class="fa fa-dot-circle-o" style="color:#00ff00"></span>&nbsp <span style="color:white;font-size: 11px">J2 virtual gauge</span>
+			</p>
+			<p>
+				&nbsp<span class="fa fa-dot-circle-o" style="color:#ff6600"></span> &nbsp<span style="color:white;font-size: 11px">J3 virtual gauge</span>
+			</p>
+		</div>
+		<div class ="credits">
+			<p style="color:white; padding:3px;font-size: 11px;font-family: courier">Created By:<br> Prithvi Raj Nair,<br> Abhiroop Bhattacharjee<br>BITS,Pilani
+			</p>
+		</div>
+		<div class="bottom_bar">
+			<span >Lat: </span>
+			<span id="lat_display">0.00</span>
+			<span>N</span>
+			<span style="width:10px;display: inline-block"></span>
+			<span>Lon:</span>
+			<span id="lon_display">0.00</span>
+			<span>E</span>
+		</div>
+	</div>
+</body>
+</html>

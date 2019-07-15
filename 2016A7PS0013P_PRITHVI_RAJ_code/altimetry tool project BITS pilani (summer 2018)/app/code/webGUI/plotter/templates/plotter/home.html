@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>
+		Altimetry Elevation Plotter
+	</title>
+	<!--linking css sheets for icons-->
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+	{%load static%}	
+	<link rel="stylesheet" type="text/css" href="{%static 'plotter/home_style.css'%}">
+	<meta charset="utf-8" />
+	<script type='text/javascript' src='http://www.bing.com/api/maps/mapcontrol?&callback=GetMap' async defer>
+	</script>
+</head>
+<body style="background-color:#444" >
+	<!-- Side navigation -->
+	<div class="sidenav">
+		<a href="{%url 'plotter:home'%}" >
+			{%load static%}
+			<img src='{%static "plotter/isro.jpg"%}' style="margin-left:auto;margin-right:auto;width:100%;display:block;" title="Home">	
+		</a><br>
+ 		<div style="margin-left: 3%; position:absolute;">
+			<form id = "new_form" method='post' action='{% url "plotter:home" %}'>
+			{% csrf_token %}
+			<p style="color:red;font-size: 12px"><a onclick="help()">>>Click Here for Help</a></p>
+			<p style="color:red;font-size: 12px"> Enter one or more search conditions</p>
+			<p style="color:red;font-size: 12px"> Points Satisfying all the given conditions will be shown as result</p>
+			<label class ="form_label">Name of water body: </label><br>
+				<input list='wbt_name' class = "text_box"  name='name' autocomplete="off">
+					<datalist id='wbt_name' style="position: fixed">
+					{% for name in names%}
+						<option value='{{name}}'>{{name}}</option>
+					{% endfor %}
+					</datalist>
+				</select><br><br>
+			<label class ="form_label">Basin: </label><br>
+				<select class = "text_box" name='basin'>
+					<option value="">-- select --</option>
+					{% for basin in basins%}
+						<option value={{basin.id}}>{{basin.name}}</option>
+					{% endfor %}
+				</select><br><br>
+			<label class ="form_label">Type of waterbody:</label> 
+				<select class = "text_box" name='wbt'>
+					<option value="">-- select --</option>
+					{% for type in wbt%}
+						<option value={{type.id}}>{{type.name}}</option>
+					{% endfor %}
+				</select><br><br>
+			<label class ="form_label">Satellite name: </label>
+				<select  class = "text_box"	 name='satellite'>
+					<option value="">-- select --</option>
+					{% for sat in sats%}
+						<option value={{sat.id}}>{{sat.nameLong}}</option>
+					{% endfor %}
+				</select><br><br>
+			<label class ="form_label">State/Province/UT:</label> 
+				<select  class = "text_box" name='state'>
+					<option value="">-- select --</option>
+					{% for state in states%}
+						<option value={{state.id}}>{{state.name}}</option>
+					{% endfor %}
+				</select><br><br>
+			<label class ="form_label">Country:</label> 
+				<select class = "text_box"  name='country'>
+					{% for country in countries%}
+						<option value={{country.id}}>{{country.name}}</option>
+					{% endfor %}
+				</select><br><br>
+				<center>
+				<input type="submit" value="Search" class="side_button" style="vertical-align:middle; font-family: Arial;">
+				</input>
+				</center>
+			<br>
+			</form>
+
+		</div>
+	</div>
+	<div class='main'>
+		<div id="myMap" >
+		</div>
+		<div class="right_bar">
+			<span class="material-icons right_button" onclick="recentre()" title="Re-Centre (India)"onmouseover=
+			"hoverChange(event)" onmouseout="hoverReverse(event)">home</span>
+			<br><br><br>
+			<span class="fa fa-filter right_button" onclick="filter_list()" title="Satellite Track Filter" onmouseover=
+			"hoverChange(event)" onmouseout="hoverReverse(event)"></span>
+			<br><br><br>
+			<span class="material-icons right_button" onclick="zoomToPoints()" title="Zoom to points" onmouseover=
+			"hoverChange(event)" onmouseout="hoverReverse(event)" style="font-size: 27px">picture_in_picture</sub>
+		</div>
+		<div id="myDropdown" class="dropdown-content w3-animate-zoom">
+			<label class="switch">
+  				<input type="checkbox" id="jason2">
+  					<span class="slider round"></span>
+			</label>
+			<label>
+   				<a>Jason 2</a>
+	   		</label>
+    		<br>		
+    		<label class="switch">
+  				<input type="checkbox" id="jason3">
+  					<span class="slider round"></span>
+    		</label>
+    		<label>
+    			<a>Jason 3</a>
+    		</label>
+			
+		</div>
+		<div class="legend">
+			<p>
+				<sub class="material-icons" style="color:purple;"> view_headline</sub>	<span style="color:white;font-size: 11px">Jason 2 track</span>
+			</p> 
+			<p>
+				<sub class="material-icons" style="color:red"> view_headline</sub>	<span style="color:white;font-size: 11px">Jason 3 track</span>
+			</p>
+			<p>
+				&nbsp<span class="fa fa-dot-circle-o" style="color:#00ff00"></span>&nbsp <span style="color:white;font-size: 11px">J2 virtual gauge</span>
+			</p>
+			<p>
+				&nbsp<span class="fa fa-dot-circle-o" style="color:#ff6600"></span> &nbsp<span style="color:white;font-size: 11px">J3 virtual gauge</span>
+			</p>
+		</div>
+		<div class ="credits">
+			<p style="color:white; padding:3px;font-size: 11px;font-family: courier">Created By:<br> Prithvi Raj Nair,<br> Abhiroop Bhattacharjee<br>BITS,Pilani
+			</p>
+		</div>
+		<div class="bottom_bar">
+			<span >Lat: </span>
+			<span id="lat_display">0.00</span>
+			<span>N</span>
+			<span style="width:10px;display: inline-block"></span>
+			<span>Lon:</span>
+			<span id="lon_display">0.00</span>
+			<span>E</span>
+		</div>
+	</div>
+	<script type="text/javascript"  >
+		var map,j3layer,j2layer,infobox;
+		var IBTemplate="<div class='infobox'><div class='title'>{title}</div>{description} <a  target='_blank' class='side_button' href='{loc_id}/plotMss'>Plot elevation from mean sea surface</a> <br> <a target='blank' class='side_button' href='{loc_id}/plotGeoid'>Plot elevation from Geoid</a></div>";
+		function GetMap()
+		{
+			map = new Microsoft.Maps.Map('#myMap',
+			{
+				credentials: 'ApTZZbhhoZxzjkplHUrYvndCUp6CpJktn2XyegtbkSDlElabO4GM7forPxAUNuZy',
+				center: new Microsoft.Maps.Location(23.5, 82.5),
+				mapTypeId: Microsoft.Maps.MapTypeId.aerial,
+				zoom: 5.0
+			});
+
+			//adding mouse click and map type change event handlers
+			Microsoft.Maps.Events.addHandler(map, 'click', mouseclickHandle );
+			Microsoft.Maps.Events.addHandler(map, 'maptypechanged', mapTypeChangeHandle);
+			//Load the GeoXml module.
+			Microsoft.Maps.loadModule('Microsoft.Maps.GeoXml', function () 
+			{
+				//Create an instance of the GeoXmlLayer.
+				j3layer = new Microsoft.Maps.GeoXmlLayer();
+				j2layer = new Microsoft.Maps.GeoXmlLayer();
+				//Set the URL of the geo XML file as the data source of the layer.
+				j3layer.setDataSource('http://127.0.0.1:8000/media/kmz/Jason3_track_uJXECAS.kmz', true);
+				j2layer.setDataSource('http://127.0.0.1:8000/media/kmz/Jason2_track.kmz', true);
+				//setting visibility false initially
+				j2layer.setVisible(false)
+				j3layer.setVisible(false)
+				//adding click event handle
+				Microsoft.Maps.Events.addHandler(j3layer,'click',mouseclickHandle);
+				Microsoft.Maps.Events.addHandler(j2layer,'click',mouseclickHandle);
+				//Add the layer to the map.
+				map.layers.insert(j3layer);
+				map.layers.insert(j2layer);
+			});
+
+			{% for loc in added_locs%}
+				placePushPin({{loc.latitude}},{{loc.longitude}},'{{loc.name}}','{{loc.waterBodyType.name}}',
+					'{{loc.basin.name}}','{{loc.satellite.nameLong}}','{{loc.state.name}}','{{loc.country.name}}',{{loc.id}});
+			{% endfor %}	
+
+			//Create an infobox at the center of the map but don't show it.
+        	infobox = new Microsoft.Maps.Infobox(map.getCenter(), {
+            	visible: false,
+            	showPointer: false,
+            	showCloseButton: false,
+            	htmlContent: IBTemplate
+        	});
+        	//adding event handler to get location of hover point if clicked
+        	Microsoft.Maps.Events.addHandler(infobox,'click',mouseclickHandle);
+
+        	//Assign the infobox to a map instance.
+       		infobox.setMap(map);
+       		
+		}
+
+
+		function mapTypeChangeHandle()
+		{
+			var aerial=Microsoft.Maps.MapTypeId.aerial;
+			var road=Microsoft.Maps.MapTypeId.road;
+			var mapType=map.getMapTypeId();
+			var x=document.getElementsByClassName('right_button');
+			var y=document.getElementsByClassName('dropdown-content');
+			if(mapType==road)
+			{
+				for(var i=0;i<x.length;++i)
+				{
+					x[i].style.backgroundColor='#ffffff';
+					x[i].style.color='#333333';
+					x[i].style.boxShadow= '0px 0px 0px 2.5px rgba(255,255,255,0.45)'
+
+				}
+				for(var i=0;i<y.length;++i)
+				{
+					y[i].style.backgroundColor='rgba(255,255,255,0.7)';
+					y[i].style.color='#333333';
+				}
+			}
+			else 
+			{
+				for(var i=0;i<x.length;++i)
+				{
+					x[i].style.backgroundColor='#444';
+					x[i].style.color='#ffffff';
+					x[i].style.boxShadow= '0px 0px 0px 2.5px rgba(0,0,0,0.45)'
+				}
+				for(var i=0;i<y.length;++i)
+				{
+					y[i].style.backgroundColor='#000000';
+					y[i].style.color='#ffffff';
+				}
+			}
+		}
+
+			
+		function mouseclickHandle(e)
+		{
+			var loc;
+			if(e.targetType=='pushpin')
+				loc=e.target.getLocation();
+			else
+				loc=e.location;
+			document.getElementById('lat_display').innerHTML=loc.latitude;
+			document.getElementById('lon_display').innerHTML=loc.longitude;
+			return false;
+		}
+
+		function showInfoBox(e)
+		{
+			if(e.target.metadata)
+			{
+				var met=e.target.metadata;
+				infobox.setOptions({
+				location: e.target.getLocation(),
+				title: 'Name: '+met.name,
+				description: '<i>Type:</i> '+met.waterBodyType+'<br><i>Basin:</i> '+met.basin+'<br><i>Satellite:</i> '+met.satname+'<br><i>Coordinates:</i> '+met.coordinates+'<br><i>Place:</i> '+met.place,
+				visible:true
+				})
+				infobox.setOptions({
+					htmlContent: IBTemplate.replace('{title}',infobox.getTitle()).replace('{description}',infobox.getDescription()).replace('{loc_id}',met.loc_id ).replace('{loc_id}',met.loc_id)
+				});
+			}
+		}
+		function hideInfoBox()
+		{
+			infobox.setOptions({visible: false});
+		}
+		function placePushPin(lat,lon,name,waterBodyType,basin,satname,state,country,id)
+		{
+			var loc=new Microsoft.Maps.Location(lat,lon);
+			var pin ; 
+			pin=new Microsoft.Maps.Pushpin(loc);	
+			pin.metadata={
+				name: name,
+				waterBodyType: waterBodyType,
+				basin: basin,
+				satname: satname,
+				coordinates: '<br>'+lat+'N'+'<br>'+lon+'E',
+				place: state+', '+country,
+				color: 'purple',
+				loc_id: id,
+			}
+
+			if (satname=='Jason 3')		
+			{
+				pin.setOptions({color: '#ff6600'});
+			}
+			else if(satname=='Jason 2')
+				pin.setOptions({color: '#00ff00'});
+
+			//add event handlers for info box on hover,location display on click
+			Microsoft.Maps.Events.addHandler(pin,'mouseover',showInfoBox);
+			Microsoft.Maps.Events.addHandler(pin,'mouseout',hideInfoBox);
+			Microsoft.Maps.Events.addHandler(pin,'click',mouseclickHandle);
+
+			//Add the pushpin to the map
+			map.entities.push(pin);
+		}
+
+		function panToPoint(lat,lon)
+		{
+			var loc=new Microsoft.Maps.Location(lat,lon);
+			map.setView({
+			mapTypeId: Microsoft.Maps.MapTypeId.aerial,
+			center: loc,
+			zoom: 9
+			});        
+		}
+
+		function zoomToPoints()
+		{
+			{% if results%}
+				var lat=[],lon=[];
+				{%for result in results%}
+					lat.push({{result.latitude}});
+					lon.push({{result.longitude}});
+				{%endfor%}
+				panToPointSet(lat,lon);
+			{%endif%}
+		}
+		function panToPointSet(lat,lon) //lat and lon are arrays of values
+		{
+			var loc=[];
+			for(var i=0;i<lat.length;++i)
+			{
+				loc.push(new Microsoft.Maps.Location(lat[i],lon[i]));
+			}
+			var rect=Microsoft.Maps.LocationRect.fromLocations(loc);
+			map.setView({bounds:rect,padding:10});
+		}
+
+		function recentre()
+		{
+			map.setView({
+			center: new Microsoft.Maps.Location(23.5, 82.5),
+			zoom: 5
+			});
+		}
+
+		function filter_list()
+		{
+			document.getElementById("myDropdown").classList.toggle("show");
+		}
+
+
+		document.addEventListener('DOMContentLoaded', function () 
+		{
+			var checkbox = document.querySelector('input[id = "jason2"]');
+
+			checkbox.addEventListener('change', function () 
+			{
+			    if (checkbox.checked) 
+			     	j2layer.setVisible(true);
+			    else
+			    	j2layer.setVisible(false);
+			});
+		});
+
+		document.addEventListener('DOMContentLoaded', function () 
+		{
+			var checkbox = document.querySelector('input[id = "jason3"]');
+			checkbox.addEventListener('change', function () 
+			{
+			   	if (checkbox.checked) 
+			      j3layer.setVisible(true);
+			    else
+			    	j3layer.setVisible(false);
+			});
+		});
+
+		function hoverChange(event)
+		{
+			if(map.getMapTypeId()==Microsoft.Maps.MapTypeId.aerial)
+				return;
+			event.target.style.backgroundColor='#ededed';
+		}
+		function hoverReverse(event)
+		{
+			if(map.getMapTypeId()==Microsoft.Maps.MapTypeId.aerial)
+				return;
+			event.target.style.backgroundColor='#ffffff';
+		}
+		function show_form() 
+		{
+			    document.getElementById("new_form").style.display="block";
+		}
+		function hide_form()
+		{
+			    document.getElementById("new_form").style.display="none";
+		}
+		{% if messages %}
+			{%for message in messages%}
+				window.alert('{{message}}');
+			{%endfor%}
+		{% endif %}	
+
+		function help()
+		{
+			window.alert("Please follow the instructions below:\n 1. After entering the necessary search conditions, click on the Search button situated at the bottom.\n 2. After the page reloads, click on the bottom-most button situated at the right to zoom into the points searched.\n 3. On placing the mouse-pointer over the points, an infobox appears containing information about the location.\n 4.To obtain a plot of water level versus time with respect to the mean sea surface click on the 'Plot Elevation from Mean sea surface' button.\n 5.To obtain a plot of water level versus time with respect to geoid click on the 'Plot Elevation from Geoid' button.")
+		}
+
+
+	</script> 
+</body>
+</html>

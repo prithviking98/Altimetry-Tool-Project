@@ -1,3 +1,9 @@
+# environment directory
+2016A7PS0013P_PRITHVI_RAJ_code/altimetry tool project BITS pilani (summer 2018)/app/env/
+
+#the vim temp files
+*~
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

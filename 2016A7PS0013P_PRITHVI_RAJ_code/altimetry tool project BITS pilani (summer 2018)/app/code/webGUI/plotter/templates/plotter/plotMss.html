@@ -1,0 +1,210 @@
+<!doctype html>
+<html>
+<title>
+	Plot
+</title>
+<head>
+ <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+
+</head>
+
+<style>
+body {
+	margin: 0%;
+}
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    margin-left: 3%;
+}
+
+th {
+    border: 1px solid #aaaaaa;
+    background-color: #888888;
+    color: #eeeeee;
+    text-align: left;
+    padding: 8px;
+}
+
+td{
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+tr:nth-child(odd) {
+    background-color: #dddddd;
+}
+p{
+
+	margin-left: 3%;
+	font-weight: bold;
+	text-align: justify;
+}
+input[type=date] {
+    height:2px;
+    padding: 12px 20px;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    margin-left: 3%;
+    font-family: Times New Roman;
+    font-size:14px;
+    text-align: center;
+}
+
+</style>
+{% load static %}
+<body>
+	<div style="background-color:#b3f0ff;">
+		<img src= '{%static "plotter/isro_iirs.jpg"%}' style="float: right;width:12%;margin:1%"><br>
+		<p>
+		{% if loc  %}
+			<em>Name of water body: </em> {{loc.name}}</br>
+			<em>Type of water body: </em> {{loc.waterBodyType}}</br>
+			<em>Basin: </em> {{loc.basin}}</br>
+			<em>Satellite: </em> {{loc.satellite}}</br>
+			<em>Latitude: </em> {{loc.latitude}}</br>
+			<em>Longitude: </em> {{loc.longitude}}</br>
+			<em>State/Province/UT: </em> {{loc.state}}</br>
+			<em>Country: </em> {{loc.country}}</br>	
+		</p>
+		<hr>	
+	</div>
+			
+		<p>
+			<em>Plot the curve of water level VS time</em><br><br>
+			<label>From: </label>
+				<input type="date" id="date1" min="1999-12-31" value="2010-01-01" />
+			<label>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspTo: </label>
+				<input type="date" id="date2" min="1999-12-31" value="2010-01-01" /><br><br>
+			<input type = "submit" value="PLOT" onclick = "submit();this.disabled= true;" id ="submit" style="display: inline-block;  border-radius: 10px;  background-color: rgba(0, 144, 183,0.85);  border: none;  color: #FFFFFF;  text-align: center;  font-size: 16px;  padding: 8px;  width: 10%;cursor: pointer; margin-left:0.08%; font-weight: bold" />
+			<input type = "submit" value="RELOAD" onclick="window.location.reload()"style="display: inline-block;  border-radius: 10px;  background-color: rgba(0, 144, 183,0.85);  border: none;  color: #FFFFFF;  text-align: center;  font-size: 16px;  padding: 8px;  width: 10%;cursor: pointer; margin-left:0.08%; font-weight: bold ;margin-left: 22%" />
+		</p>
+		<hr>
+		{% if results %}
+			
+		<div id="myChart" style="height:400px;width:100%"><!-- Plotly chart will be drawn inside this DIV --></div><br>
+		<table id="mytable" style="display:none">
+			<thead>
+				<tr>
+					<td><strong>Date</strong></td>
+					<td><strong>Elevation in metres</strong></td>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table><br>
+		<p id = "out_of_range" style="display:none">Absence of a plot even on click indicates unavailability of data for the entered range of dates. Please try again with another range</p>
+		{% else %}
+    	<p>Data Unavailable</p>
+		{% endif %}
+				
+	<script>
+		
+	function submit() {
+			
+		function convert(date) {
+    
+        		mnth = ("0" + (date.getMonth()+1)).slice(-2),
+        		day  = ("0" + date.getDate()).slice(-2);
+    			return [ date.getFullYear(), mnth, day ].join("-");
+			}
+
+		function date_arr() {
+			
+ 		var dates = [];
+ 		
+		{% for result in results %}
+			if ((convert(new Date("{{result.date}}"))>=document.getElementById("date1").value) && (convert(new Date("{{result.date}}"))<=document.getElementById("date2").value)) {
+				dates.push(new Date("{{result.date}}"));
+				}	
+		{% endfor %}
+		return dates;
+		
+	}
+
+		function ele_arr() {
+
+ 		var elevation = [];
+
+		{% for result in results %}
+			if ((convert(new Date("{{result.date}}"))>=document.getElementById("date1").value) && (convert(new Date("{{result.date}}"))<=document.getElementById("date2").value)) {
+				elevation.push({{result.elevation}});
+		
+			}
+		{% endfor %}	
+		return elevation;
+		
+ 	}
+
+			var trace = {
+				
+			  x: date_arr(),
+			  y: ele_arr(), 
+			  type: 'line'
+			  	
+			};
+			var layout = {
+		 		 title: '<b>Water level VS Time</b>',
+		 		 xaxis: {
+    					title: '<b>Date</b>'
+  						},
+  				yaxis: {
+   						 title: '<b>Elevation in metres</b>'
+  						},
+  				
+			};
+			
+			var data = [trace];
+			Plotly.newPlot('myChart', data,layout,{displayModeBar: false});
+
+	function addRow(content,morecontent)
+		{
+         if (!document.getElementsByTagName) return;
+         tabBody=document.getElementsByTagName("tbody").item(0);
+         row=document.createElement("tr");
+         cell1 = document.createElement("td");
+         cell2 = document.createElement("td");
+         textnode1=document.createTextNode(content);
+         textnode2=document.createTextNode(morecontent);
+         cell1.appendChild(textnode1);
+         cell2.appendChild(textnode2);
+         row.appendChild(cell1);
+         row.appendChild(cell2);
+         tabBody.appendChild(row);
+
+		}
+
+		var dates = date_arr();
+		var elevation = ele_arr();
+
+		for(var i=0; i<dates.length; ++i)
+		{
+			addRow(convert(dates[i]),elevation[i]);
+		}
+
+		document.getElementById("mytable").style.display="inline-block";
+		document.getElementById("out_of_range").style.display="block";
+		document.getElementById("submit").style.backgroundColor="#d5d5c3";
+	}
+
+</script><br>
+	
+	{% for result in results	%}	
+	{% empty %}
+		<p> Sorry, no elevation data is available for this location<br>
+			Possible reasons might be -<br>
+			1) One or more parameters rerquired to calcuate elevation not available in satellite data<br>
+			2) Water body is not wide enough <br>
+			3) Other system error <br>
+		</p>
+	{% endfor %}
+		
+	{% else %}
+		<h3> Error: Data could not be retrieved</h3>
+	{% endif %}
+</body>
+</html>
